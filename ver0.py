@@ -1,10 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
-import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
-print(sys.stdout.encoding)
 
 import sys
 import os
@@ -25,6 +19,10 @@ def get_args():
     import argparse
     p = argparse.ArgumentParser(description='Geotag one or more photos with location and orientation from GPX file.')
     p.add_argument('path', help='Path containing JPG files, or location of one JPG file.')
+    #p.add_argument('gpx_file', help='Location of GPX file to get locations from.')
+    #p.add_argument('time_offset',
+    #    help='Time offset between GPX and photos. If your camera is ahead by one minute, time_offset is 60.',
+    #    default=0, type=float, nargs='?') # nargs='?' is how you make the last positional argument optional.
     return p.parse_args()
 
     
@@ -84,15 +82,15 @@ def get_lat_lon(exif_data):
         gps_longitude = _get_if_exist(gps_info, 'GPSDestLongitude')
         gps_longitude_ref = _get_if_exist(gps_info, 'GPSDestLongitudeRef')
         
-        if gps_latitude is None:  
-            gps_latitude = _get_if_exist(gps_info, "GPSLatitude")
-            gps_latitude_ref = _get_if_exist(gps_info, 'GPSLatitudeRef')
-            gps_longitude = _get_if_exist(gps_info, 'GPSLongitude')
-            gps_longitude_ref = _get_if_exist(gps_info, 'GPSLongitudeRef')
         
+        '''
+        gps_latitude = _get_if_exist(gps_info, "GPSLatitude")
+        gps_latitude_ref = _get_if_exist(gps_info, 'GPSLatitudeRef')
+        gps_longitude = _get_if_exist(gps_info, 'GPSLongitude')
+        gps_longitude_ref = _get_if_exist(gps_info, 'GPSLongitudeRef')
+        '''
         
-        
-      
+
         if gps_latitude and gps_latitude_ref and gps_longitude and gps_longitude_ref:
             lat = _convert_to_degress(gps_latitude)
             if gps_latitude_ref != "N":                     
@@ -115,68 +113,14 @@ def get_iptc_caption(exif_data):
 def save_exif_value(filepath,tagname,new_value):
     metadata = pyexiv2.ImageMetadata(filepath)
     metadata.read()
+    #tag=metadata[tagname]
+    #tag.value=["newval1"]
+    #metadata.write()
     metadata[tagname]=[new_value]
     metadata.iptc_charset = 'utf-8'
     metadata.write()
     
     return 0
-    
-text_combinations = {}    
-text_combinations[1] = u'{filename}_{road_ru}{extension}'    
-text_combinations[2] = u'{filename}_{road_en}{extension}'    
-text_combinations[3] = u'{filename}_{road_en_translit}{extension}'    
-    
-def ask_mode(filepath):
-    with open(str(filepath), 'rb') as f:
-        image = Image.open(f)
-        exif_data = get_exif_data(image)
-        del image
-        
-    gc = {}
-    gc['en']={}
-    gc['ru']={}
-    lat,lon=get_lat_lon(exif_data)
-    iptc_caption=get_iptc_caption(exif_data)
-    
-    geocoding_lang='en'
-    overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
-    print overpass_query
-    overpass_http_result=urllib2.urlopen(overpass_query, timeout=5).read()
-    overpass_data = json.loads(overpass_http_result)
-    gc['en']['state']=_get_if_exist(overpass_data['address'],'state') or ''  
-    gc['en']['town']=_get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
-    gc['en']['house_number']=_get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
-    gc['en']['road']=_get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or ''  
-    
-    geocoding_lang='ru'
-    overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
-    overpass_http_result=urllib2.urlopen(overpass_query, timeout=10).read()
-    overpass_data = json.loads(overpass_http_result)
-    
-    gc['ru']['state'] = _get_if_exist(overpass_data['address'],'state') or ''
-    gc['ru']['town'] = _get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
-    gc['ru']['house_number'] = _get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
-    gc['ru']['road'] = _get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or '' 
-    address_string='#'+gc['ru']['state'].replace(' ','_')+' '+'#'+gc['ru']['town'].replace(' ','_')+' '+gc['ru']['road'] + ' ' + gc['ru']['house_number']
-    #print address_string
-    address_string=translit(address_string,'ru', reversed=False)
-    #print address_string
-    address_string=re.sub(r'\s+', ' ', address_string) #remove double spaces
-    #print address_string
-    gc['ru']['address_string_ru'] = address_string
-    
-    
-    for index,template in text_combinations.iteritems():
-        full_text = template.format(
-        filename=(os.path.splitext(filepath)[0]),
-        road_en=gc['en']['road'],
-        road_en_translit=translit(gc['en']['road'],'ru',reversed=True),
-        road_ru=gc['ru']['road'],
-        extension=os.path.splitext(filepath)[1])
-        print(str(index).zfill(5)+'   '+full_text)
-        
-    quit()
-    
     
 def rename_using_dest(filepath):
     '''
@@ -278,12 +222,15 @@ if __name__ == '__main__':
         for root, sub_folders, files in os.walk(args.path):
             file_list += [os.path.join(root, filename) for filename in files if filename.lower().endswith(".jpg")]
 
+    # start time
+    #t = time.time()
 
+    # read gpx file to get track locations
+    #gpx = get_lat_lon_time(args.gpx_file)
 
-    print("===\nStarting renaming of {0} images using .\n===".format(len(file_list)))
+    print("===\nStarting geotagging of {0} images using .\n===".format(len(file_list)))
 
     for filepath in file_list:
-        mode = ask_mode(filepath)
         rename_using_dest(filepath)
 
-
+    #print("Done geotagging {0} images in {1:.1f} seconds.".format(len(file_list), time.time()-t))
