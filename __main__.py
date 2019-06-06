@@ -168,13 +168,19 @@ def ask_mode(filepath):
     geocoding_lang='en'
     overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
     print overpass_query
-    overpass_http_result=urllib2.urlopen(overpass_query, timeout=5).read()
-    overpass_data = json.loads(overpass_http_result)
-    gc['en']['state']=_get_if_exist(overpass_data['address'],'state') or ''  
-    gc['en']['town']=_get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
-    gc['en']['house_number']=_get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
-    gc['en']['road']=_get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or ''  
-    
+    while True:
+        try:
+            overpass_http_result=urllib2.urlopen(overpass_query, timeout=15).read()
+            overpass_data = json.loads(overpass_http_result)
+            gc['en']['state']=_get_if_exist(overpass_data['address'],'state') or ''  
+            gc['en']['town']=_get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
+            gc['en']['house_number']=_get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
+            gc['en']['road']=_get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or ''  
+            break
+        except:
+            print 'error'
+            continue
+        
     geocoding_lang='ru'
     overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
     overpass_http_result=urllib2.urlopen(overpass_query, timeout=10).read()
