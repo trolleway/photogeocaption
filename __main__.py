@@ -148,6 +148,8 @@ text_combinations = {}
 text_combinations[1] = u'{filename}_{road_ru}{extension}'    
 text_combinations[2] = u'{filename}_{road_en}{extension}'    
 text_combinations[3] = u'{filename} {road_en_translit}{extension}'    
+text_combinations[4] = u'{filename} {suburb_ru}{extension}'    
+text_combinations[5] = u'{filename} {city_ru}{town_ru}{extension}'    
     
 def ask_mode(filepath):
     with open(str(filepath), 'rb') as f:
@@ -174,6 +176,7 @@ def ask_mode(filepath):
             overpass_data = json.loads(overpass_http_result)
             gc['en']['state']=_get_if_exist(overpass_data['address'],'state') or ''  
             gc['en']['town']=_get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
+            gc['en']['suburb'] = _get_if_exist(overpass_data['address'],'suburb') or ''
             gc['en']['house_number']=_get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
             gc['en']['road']=_get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or ''  
             break
@@ -188,6 +191,9 @@ def ask_mode(filepath):
     
     gc['ru']['state'] = _get_if_exist(overpass_data['address'],'state') or ''
     gc['ru']['town'] = _get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
+    gc['ru']['suburb'] = _get_if_exist(overpass_data['address'],'suburb') or ''
+    gc['ru']['city'] = _get_if_exist(overpass_data['address'],'city') or ''
+    gc['ru']['town'] = _get_if_exist(overpass_data['address'],'town') or ''
     gc['ru']['house_number'] = _get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
     gc['ru']['road'] = _get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or '' 
     address_string='#'+gc['ru']['state'].replace(' ','_')+' '+'#'+gc['ru']['town'].replace(' ','_')+' '+gc['ru']['road'] + ' ' + gc['ru']['house_number']
@@ -205,6 +211,9 @@ def ask_mode(filepath):
             road_en=gc['en']['road'],
             road_en_translit=translit(gc['en']['road'],'ru',reversed=True),
             road_ru=gc['ru']['road'],
+            suburb_ru=gc['ru']['suburb'],
+            city_ru=gc['ru']['city'],
+            town_ru=gc['ru']['town'],
             extension=os.path.splitext(filepath)[1]
         )
         texts[index] = full_text
@@ -260,11 +269,13 @@ def rename_using_dest(filepath):
     print overpass_query
     overpass_http_result=urllib2.urlopen(overpass_query, timeout=10).read()
     overpass_data = json.loads(overpass_http_result)
-    district=_get_if_exist(overpass_data['address'],'state') or ''
-    town=_get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
-    housenumber=_get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
-    road=_get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or '' 
-    address_string='#'+district.replace(' ','_')+' '+'#'+town.replace(' ','_')+' '+road+' '+housenumber
+    district = _get_if_exist(overpass_data['address'],'state') or ''
+    city = _get_if_exist(overpass_data['address'],'city') or ''
+    town = _get_if_exist(overpass_data['address'],'town') or ''
+    hr_town = _get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
+    housenumber = _get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
+    road = _get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or '' 
+    address_string = '#'+district.replace(' ','_')+' '+'#'+town.replace(' ','_')+' '+road+' '+housenumber
     print address_string
     address_string=translit(address_string,'ru', reversed=False)
     print address_string
