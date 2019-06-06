@@ -19,6 +19,29 @@ import json
 
 from transliterate import translit, get_available_language_codes
 
+def _find_getch():
+    try:
+        import termios
+    except ImportError:
+        # Non-POSIX. Return msvcrt's (Windows') getch.
+        import msvcrt
+        return msvcrt.getch
+
+    # POSIX system. Create and return a getch that manipulates the tty.
+    import sys, tty
+    def _getch():
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+    return _getch
+
+
 
 
 def get_args():
@@ -124,7 +147,7 @@ def save_exif_value(filepath,tagname,new_value):
 text_combinations = {}    
 text_combinations[1] = u'{filename}_{road_ru}{extension}'    
 text_combinations[2] = u'{filename}_{road_en}{extension}'    
-text_combinations[3] = u'{filename}_{road_en_translit}{extension}'    
+text_combinations[3] = u'{filename} {road_en_translit}{extension}'    
     
 def ask_mode(filepath):
     with open(str(filepath), 'rb') as f:
@@ -137,6 +160,10 @@ def ask_mode(filepath):
     gc['ru']={}
     lat,lon=get_lat_lon(exif_data)
     iptc_caption=get_iptc_caption(exif_data)
+    
+    if lat is None or lon is None:
+        return None
+      
     
     geocoding_lang='en'
     overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
@@ -165,18 +192,32 @@ def ask_mode(filepath):
     #print address_string
     gc['ru']['address_string_ru'] = address_string
     
-    
+    texts = dict()
     for index,template in text_combinations.iteritems():
         full_text = template.format(
-        filename=(os.path.splitext(filepath)[0]),
-        road_en=gc['en']['road'],
-        road_en_translit=translit(gc['en']['road'],'ru',reversed=True),
-        road_ru=gc['ru']['road'],
-        extension=os.path.splitext(filepath)[1])
+            filename=(os.path.splitext(filepath)[0]),
+            road_en=gc['en']['road'],
+            road_en_translit=translit(gc['en']['road'],'ru',reversed=True),
+            road_ru=gc['ru']['road'],
+            extension=os.path.splitext(filepath)[1]
+        )
+        texts[index] = full_text
         print(str(index).zfill(5)+'   '+full_text)
         
-    quit()
+    choise = input("Please enter a number or 0 to skip: ")
     
+    if choise == '0':
+        return None
+    
+    rename_file(filepath,texts[choise])
+    
+    
+        
+    
+def rename_file(filepath,text):
+    newname=text
+    print 'rename {filepath} to {newname}'.format(filepath=filepath,newname=newname)
+    os.rename(filepath, text)
     
 def rename_using_dest(filepath):
     '''
@@ -284,6 +325,6 @@ if __name__ == '__main__':
 
     for filepath in file_list:
         mode = ask_mode(filepath)
-        rename_using_dest(filepath)
+       
 
 
