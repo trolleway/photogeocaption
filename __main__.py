@@ -1,20 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
 
-print(sys.stdout.encoding)
 
 import sys
 import os
 import datetime
 import pyexiv2
 import re
-from dateutil.tz import tzlocal
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
-import urllib2
+import urllib
 import json
 
 from transliterate import translit, get_available_language_codes
@@ -169,10 +164,9 @@ def ask_mode(filepath):
     
     geocoding_lang='en'
     overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
-    print overpass_query
     while True:
         try:
-            overpass_http_result=urllib2.urlopen(overpass_query, timeout=15).read()
+            overpass_http_result=urllib.urlopen(overpass_query, timeout=15).read()
             overpass_data = json.loads(overpass_http_result)
             gc['en']['state']=_get_if_exist(overpass_data['address'],'state') or ''  
             gc['en']['town']=_get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
@@ -181,12 +175,12 @@ def ask_mode(filepath):
             gc['en']['road']=_get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or ''  
             break
         except:
-            print 'error'
+            print('Geocoding error /n '+overpass_query)
             continue
         
     geocoding_lang='ru'
     overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
-    overpass_http_result=urllib2.urlopen(overpass_query, timeout=10).read()
+    overpass_http_result=urllib.urlopen(overpass_query, timeout=10).read()
     overpass_data = json.loads(overpass_http_result)
     
     gc['ru']['state'] = _get_if_exist(overpass_data['address'],'state') or ''
@@ -231,7 +225,7 @@ def ask_mode(filepath):
     
 def rename_file(filepath,text):
     newname=text
-    print 'rename {filepath} to {newname}'.format(filepath=filepath,newname=newname)
+    print('rename {filepath} to {newname}'.format(filepath=filepath,newname=newname))
     os.rename(filepath, text)
     
 def rename_using_dest(filepath):
@@ -243,15 +237,14 @@ def rename_using_dest(filepath):
         exif_data = get_exif_data(image)
         del image
     #print 'Photo coords founded'
-    print "*"
+    print("*")
     lat,lon=get_lat_lon(exif_data)
     iptc_caption=get_iptc_caption(exif_data)
     
     # -=-=-=-=-=-=-
     geocoding_lang='en'
     overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
-    print overpass_query
-    overpass_http_result=urllib2.urlopen(overpass_query, timeout=5).read()
+    overpass_http_result=urllib.urlopen(overpass_query, timeout=5).read()
     overpass_data = json.loads(overpass_http_result)
     district=_get_if_exist(overpass_data['address'],'state') or ''
     town=_get_if_exist(overpass_data['address'],'city') or _get_if_exist(overpass_data['address'],'town') or _get_if_exist(overpass_data['address'],'suburb') or _get_if_exist(overpass_data['address'],'village') or ''
@@ -266,8 +259,7 @@ def rename_using_dest(filepath):
     # -=-=-=-=-=-=-
     geocoding_lang='ru'
     overpass_query='http://nominatim.openstreetmap.org/reverse?format=json&lat='+str(lat)+'&lon='+str(lon)+'&zoom=18&addressdetails=1&accept-language='+geocoding_lang+'&email=trolleway@yandex.ru' #55.761513669974704,37.65164165999822
-    print overpass_query
-    overpass_http_result=urllib2.urlopen(overpass_query, timeout=10).read()
+    overpass_http_result=urllib.urlopen(overpass_query, timeout=10).read()
     overpass_data = json.loads(overpass_http_result)
     district = _get_if_exist(overpass_data['address'],'state') or ''
     city = _get_if_exist(overpass_data['address'],'city') or ''
@@ -276,11 +268,8 @@ def rename_using_dest(filepath):
     housenumber = _get_if_exist(overpass_data['address'],'house_number') or _get_if_exist(overpass_data['address'],'building') or '' 
     road = _get_if_exist(overpass_data['address'],'road') or _get_if_exist(overpass_data['address'],'address27') or '' 
     address_string = '#'+district.replace(' ','_')+' '+'#'+town.replace(' ','_')+' '+road+' '+housenumber
-    print address_string
     address_string=translit(address_string,'ru', reversed=False)
-    print address_string
     address_string=re.sub(r'\s+', ' ', address_string) #remove double spaces
-    print address_string
     address_string_ru=address_string
     # -=-=-=-=-=-=-   
     
@@ -311,21 +300,19 @@ def rename_using_dest(filepath):
     else:
         iptc_caption=address_string_long
         
-    print address_string_long
+    print(address_string_long)
     
     save_exif_value(filepath,'Iptc.Application2.Caption',iptc_caption)
     save_exif_value(filepath,'Iptc.Application2.ObjectName',address_string_en.replace('#',''))
 
 
     
-    print "rename {0} to {1}".format(filepath,new_filepath)
+    print("rename {0} to {1}".format(filepath,new_filepath))
     os.rename(filepath,new_filepath)
 
 if __name__ == '__main__':
     args = get_args()
 
-    #now = datetime.datetime.now(tzlocal())
-    #print("Your local timezone is {0}, if this is not correct, your geotags will be wrong.".format(now.strftime('%Y-%m-%d %H:%M:%S %Z')))
 
     if args.path.lower().endswith(".jpg"):
         # single file
