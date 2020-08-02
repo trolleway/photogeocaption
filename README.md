@@ -13,3 +13,12 @@ python __main__.py photo.jpg
 ```
 append street name to photo name
 
+
+
+# Test run
+
+```
+cp -rf samples operations
+python3 photo_geo_processor.py operations
+
+```
